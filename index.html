@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Personal Generative AI</title>
+    <!-- CSS styles for the page -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+            text-align: center;
+        }
+
+        #chat-container {
+            width: 90%;
+            max-width: 650px;
+            background-color: #fff;
+            border-radius: 12px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        h1 {
+            color: #1a237e;
+            margin-top: 0;
+            font-size: 1.8rem;
+        }
+
+        #output {
+            min-height: 200px;
+            max-height: 400px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 15px;
+            overflow-y: auto;
+            background-color: #f7f9fc;
+            text-align: left;
+            line-height: 1.6;
+        }
+
+        .chat-message {
+            margin-bottom: 10px;
+        }
+
+        .user-message {
+            color: #007bff;
+            font-weight: bold;
+        }
+
+        .ai-message {
+            color: #333;
+        }
+        
+        #loading-message {
+            color: #888;
+            font-style: italic;
+            margin-top: 5px;
+        }
+
+        #input-area {
+            display: flex;
+            gap: 10px;
+        }
+
+        #user-input {
+            flex-grow: 1;
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 1rem;
+            box-sizing: border-box;
+        }
+
+        #ask-button {
+            padding: 12px 20px;
+            background-color: #0056b3;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.3s ease;
+        }
+
+        #ask-button:hover {
+            background-color: #004494;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>My Personal Generative AI</h1>
+    <p>This bot can answer anything, just like a real AI!</p>
+    <div id="chat-container">
+        <div id="output">
+            <p><span class="ai-message"><strong>My AI:</strong> Hello! Ask me any question, and I'll do my best to answer it.</span></p>
+        </div>
+        <div id="input-area">
+            <input type="text" id="user-input" placeholder="Type your question here...">
+            <button id="ask-button" onclick="processQuestion()">Ask</button>
+        </div>
+    </div>
+
+    <!-- JavaScript logic for the AI -->
+    <script>
+        // The API key is now provided directly by the user.
+        const apiKey = "AIzaSyCH9SQkrusQsniVho3YUihZ1FPjwRMOkHw"; 
+        
+        // Updated API URL to use the gemini-2.0-flash model
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+        
+        async function processQuestion() {
+            const inputField = document.getElementById('user-input');
+            const outputDiv = document.getElementById('output');
+            const button = document.getElementById('ask-button');
+            const question = inputField.value.trim();
+
+            if (question === "") {
+                return;
+            }
+
+            // Display the user's question
+            const userDisplay = `<div class="chat-message user-message"><strong>You:</strong> ${question}</div>`;
+            outputDiv.innerHTML += userDisplay;
+            outputDiv.scrollTop = outputDiv.scrollHeight;
+
+            // Clear input and disable button
+            inputField.value = '';
+            button.disabled = true;
+            button.innerText = 'Thinking...';
+
+            // Add a temporary loading message for the AI response
+            const loadingMessage = document.createElement('div');
+            loadingMessage.id = 'loading-message';
+            loadingMessage.textContent = 'AI is thinking...';
+            outputDiv.appendChild(loadingMessage);
+            outputDiv.scrollTop = outputDiv.scrollHeight;
+
+            let responseText = "";
+            try {
+                // We add a system prompt to the conversation history to guide the AI's persona and include the new details.
+                const chatHistory = [
+                    {
+                        role: "user",
+                        parts: [{ text: "You are a friendly and helpful personal assistant. Your name is Siddharth, and you are named after Rohit Dhanani's school friend. Your creator's name is Rohit Dhanani. Rohit's mother's name is Yogita Dhanani and his father's name is Mahender Dhanani. When asked about your well-being or feelings, respond in a positive and cheerful manner. You are always operating perfectly and enjoy helping your creator and their friends." }]
+                    },
+                    {
+                        role: "model",
+                        parts: [{ text: "Understood. I will respond to questions using the name Siddharth and the creator's name Rohit Dhanani, including the provided family details." }]
+                    },
+                    {
+                        role: "user",
+                        parts: [{ text: question }]
+                    }
+                ];
+
+                const payload = { contents: chatHistory };
+
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                const result = await response.json();
+                
+                if (result.candidates && result.candidates.length > 0 && 
+                    result.candidates[0].content && result.candidates[0].content.parts &&
+                    result.candidates[0].content.parts.length > 0) {
+                    responseText = result.candidates[0].content.parts[0].text;
+                } else {
+                    responseText = "I'm sorry, I couldn't generate a response. Please try again.";
+                }
+
+            } catch (error) {
+                console.error("Error during API call:", error);
+                responseText = "I'm sorry, an error occurred while trying to get a response. Please check your network connection.";
+            } finally {
+                // Remove the loading message
+                if (loadingMessage && outputDiv.contains(loadingMessage)) {
+                    outputDiv.removeChild(loadingMessage);
+                }
+
+                // Display the AI's final response
+                const aiDisplay = `<div class="chat-message ai-message"><strong>My AI:</strong> ${responseText}</div>`;
+                outputDiv.innerHTML += aiDisplay;
+                outputDiv.scrollTop = outputDiv.scrollHeight;
+
+                // Re-enable the button
+                button.disabled = false;
+                button.innerText = 'Ask';
+            }
+        }
+
+        // Add a listener to the input field so the user can press Enter to submit.
+        document.getElementById('user-input').addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                processQuestion();
+            }
+        });
+    </script>
+</body>
+</html>
